@@ -181,6 +181,7 @@ function App() {
   const handleExportPDF = async () => {
     console.log('Export PDF clicked')
     if (!content.trim()) {
+      console.log('No content, showing alert')
       alert('Please enter some content first')
       return
     }
@@ -195,10 +196,10 @@ function App() {
         exportContent = `{transpose:${transpose}}\n${content}`
       }
 
-      console.log('Checking Tauri context...', typeof window !== 'undefined' && '__TAURI__' in window)
-
-      // Check if running in Tauri context
-      if (typeof window !== 'undefined' && '__TAURI__' in window) {
+      console.log('Attempting to call save dialog...')
+      
+      // Always try to use Tauri APIs directly when running in dev mode
+      try {
         // Show save dialog
         const filePath = await save({
           defaultPath: `${title.replace(/[^a-z0-9]/gi, '_')}.pdf`,
@@ -208,23 +209,29 @@ function App() {
           }]
         })
 
+        console.log('File path selected:', filePath)
+
         if (!filePath) {
           setIsExporting(false)
           return
         }
 
         // Call Rust backend to generate PDF
+        console.log('Calling generate_pdf...')
         const result = await invoke<string>('generate_pdf', {
           songContent: exportContent,
           outputPath: filePath
         })
 
+        console.log('PDF generation result:', result)
         alert(result)
-      } else {
-        // Running in browser dev mode - show alert
+      } catch (tauriError) {
+        // Not in Tauri context
+        console.error('Not in Tauri context:', tauriError)
         alert('PDF export only works in the Tauri app. Run "npm run dev" instead of "npm run vite:dev"')
       }
     } catch (error) {
+      console.error('Export error:', error)
       alert(`Failed to export PDF: ${error}`)
     } finally {
       setIsExporting(false)

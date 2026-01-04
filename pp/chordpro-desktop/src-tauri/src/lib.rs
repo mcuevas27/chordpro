@@ -1,7 +1,30 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::Command;
 use tauri::command;
+
+// Try to locate a Perl executable. Prefer PATH, then common Windows install locations.
+fn locate_perl() -> Result<String, String> {
+  if let Ok(output) = Command::new("perl").arg("--version").output() {
+    if output.status.success() {
+      return Ok("perl".to_string());
+    }
+  }
+
+  let candidates = [
+    r"C:\\Strawberry\\perl\\bin\\perl.exe",
+    r"C:\\Perl64\\bin\\perl.exe",
+    r"C:\\Perl\\bin\\perl.exe",
+  ];
+
+  for cand in candidates {
+    if Path::new(cand).exists() {
+      return Ok(cand.to_string());
+    }
+  }
+
+  Err("Perl is not installed or not in PATH. Please install Strawberry Perl (winget install StrawberryPerl.StrawberryPerl).".to_string())
+}
 
 #[command]
 fn generate_pdf(song_content: String, output_path: String) -> Result<String, String> {
@@ -18,17 +41,11 @@ fn generate_pdf(song_content: String, output_path: String) -> Result<String, Str
   // In production: could bundle or require CHORDPRO_HOME env var
   let script_path = r#"D:\VS Code Projects\chordpro\script\chordpro.pl"#;
   
-  // Check if Perl is available
-  let perl_check = Command::new("perl")
-    .arg("--version")
-    .output();
-    
-  if perl_check.is_err() {
-    return Err("Perl is not installed or not in PATH. Please install Perl to generate PDFs.".to_string());
-  }
+  // Locate a usable Perl executable
+  let perl_path = locate_perl()?;
 
   // Spawn chordpro process
-  let output = Command::new("perl")
+  let output = Command::new(perl_path)
     .arg(script_path)
     .arg("--output")
     .arg(&output_path)
