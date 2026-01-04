@@ -179,6 +179,7 @@ function App() {
   }
 
   const handleExportPDF = async () => {
+    console.log('Export PDF clicked')
     if (!content.trim()) {
       alert('Please enter some content first')
       return
@@ -186,12 +187,15 @@ function App() {
 
     try {
       setIsExporting(true)
+      console.log('Starting export...')
 
       // Prepare content with transpose
       let exportContent = content
       if (transpose !== 0 && !content.includes('{transpose:')) {
         exportContent = `{transpose:${transpose}}\n${content}`
       }
+
+      console.log('Checking Tauri context...', typeof window !== 'undefined' && '__TAURI__' in window)
 
       // Check if running in Tauri context
       if (typeof window !== 'undefined' && '__TAURI__' in window) {
